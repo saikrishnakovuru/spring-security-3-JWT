@@ -74,3 +74,16 @@ private String createToken(Map<String, Object> claims, String username) {
 ```
 
 An important step that could not be ignored is, allowing the `/products/authenticate` without any security issues. Take a look at the `SecurityConfig's securityFilterChain()`
+
+With the implementation we have, we will be able to generate the token to anyOne though he's not an user at all because we are not validating the user details to the details in DB.
+
+// Creating the token in API tool.
+
+```java
+http://localhost:8080/products/authenticate
+
+{
+  "username":"sai",
+  "password":"sai"
+}
+```
