@@ -1,8 +1,9 @@
 package com.spring.security3.controller;
 
-
+import com.spring.security3.dto.AuthenticationRequestDetails;
 import com.spring.security3.dto.Product;
 import com.spring.security3.entity.UserInfo;
+import com.spring.security3.service.JwtTokenGeneratingService;
 import com.spring.security3.service.ProductService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -16,6 +17,8 @@ public class ProductController {
 
   @Autowired
   private ProductService service;
+  @Autowired
+  private JwtTokenGeneratingService jwtService;
 
   @GetMapping("/welcome")
   public String welcome() {
@@ -38,4 +41,10 @@ public class ProductController {
   public Product getProductById(@PathVariable int id) {
     return service.getProduct(id);
   }
+
+  @PostMapping("/authenticate")
+  public String authenticateAndGetTken(@RequestBody AuthenticationRequestDetails details) {
+    return jwtService.generateToken(details.getUsername());
+  }
+
 }
