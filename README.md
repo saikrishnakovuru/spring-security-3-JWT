@@ -49,3 +49,28 @@ public class JwtTokenGeneratingService {
 ```
 
 To implement the unImplemented `createToken()` method we need few dependencies from JWT.
+
+We know that the JWT token comes with `Header`, `Payload` and `Signature`. let's provide those.
+
+`Subject and Expiration` time are part of `Payload`, that contains `userName and expiration time`.
+
+`Header` and `signature` are being set at the same place `signWith()`
+
+```java
+private String createToken(Map<String, Object> claims, String username) {
+        return Jwts.builder()
+                .setClaims(claims)
+                .setSubject(username)
+                .setIssuedAt(new Date(System.currentTimeMillis()))
+                .setExpiration(new Date(System.currentTimeMillis() + 1000 * 60 * 30))
+                .signWith(getSignKey(), SignatureAlgorithm.HS256)
+                .compact();
+    }
+
+    private Key getSignKey() {
+        byte[] keyBytes = Decoders.BASE64.decode(SECRET);
+        return Keys.hmacShaKeyFor(keyBytes);
+    }
+```
+
+An important step that could not be ignored is, allowing the `/products/authenticate` without any security issues. Take a look at the `SecurityConfig's securityFilterChain()`

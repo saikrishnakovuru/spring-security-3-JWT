@@ -20,31 +20,31 @@ import org.springframework.security.web.SecurityFilterChain;
 public class SecurityConfig {
 
   @Bean
-  //authentication
+  // authentication
   public UserDetailsService userDetailsService() {
-//        UserDetails admin = User.withUsername("Basant")
-//                .password(encoder.encode("Pwd1"))
-//                .roles("ADMIN")
-//                .build();
-//        UserDetails user = User.withUsername("John")
-//                .password(encoder.encode("Pwd2"))
-//                .roles("USER","ADMIN","HR")
-//                .build();
-//        return new InMemoryUserDetailsManager(admin, user);
+    // UserDetails admin = User.withUsername("Basant")
+    // .password(encoder.encode("Pwd1"))
+    // .roles("ADMIN")
+    // .build();
+    // UserDetails user = User.withUsername("John")
+    // .password(encoder.encode("Pwd2"))
+    // .roles("USER","ADMIN","HR")
+    // .build();
+    // return new InMemoryUserDetailsManager(admin, user);
     return new UserInfoUserDetailsService();
   }
 
   @Bean
   public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
     return http.csrf(csrf -> csrf.disable())
-            // h2-console throws 403 without loading the content without the below line.
-            .headers(headers -> headers.frameOptions(options -> options.disable()))
-            .authorizeHttpRequests(auth ->
-                    auth.requestMatchers("/products/welcome", "/products/new", "/h2-console/**").permitAll()
-                            .requestMatchers("/products/**")
-                            .authenticated()
-            )
-            .httpBasic(Customizer.withDefaults()).build();
+        // h2-console throws 403 without loading the content without the below line.
+        .headers(headers -> headers.frameOptions(options -> options.disable()))
+        .authorizeHttpRequests(auth -> auth
+            .requestMatchers("/products/welcome", "/products/new", "/h2-console/**", "/products/authenticate")
+            .permitAll()
+            .requestMatchers("/products/**")
+            .authenticated())
+        .httpBasic(Customizer.withDefaults()).build();
   }
 
   @Bean
