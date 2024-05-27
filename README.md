@@ -87,3 +87,107 @@ http://localhost:8080/products/authenticate
   "password":"sai"
 }
 ```
+
+In the springSecurity flow, later FilterChain the request will be deligated to `AuthenticationManager`. Now let's use authentication manager to validate the userDetails for authentication.
+
+```java
+@PostMapping("/authenticate")
+  public String authenticateAndGetTken(@RequestBody AuthenticationRequestDetails details) {
+    Authentication authentication = authenticationManager
+        .authenticate(new UsernamePasswordAuthenticationToken(details.getUsername(), details.getPassword()));
+    if (authentication.isAuthenticated())
+      return jwtService.generateToken(details.getUsername());
+    else
+      throw new UsernameNotFoundException("invalid user request !");
+  }
+
+  //SecurityConfig
+  @Bean
+  public AuthenticationManager authManager(AuthenticationConfiguration authenticationConfiguration) throws Exception {
+    return authenticationConfiguration.getAuthenticationManager();
+  }
+```
+
+## Token validation
+
+Till now, we created the token, in the further steps we need to validate the token basedon the username, expiration time.
+
+Created a new class 'JwtAuthFilter' to validate the token.
+
+```java
+@Component
+public class JwtAuthFilter extends OncePerRequestFilter {
+
+    @Override
+    protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain)
+            throws ServletException, IOException {
+              String authHeader = request.getHeader("Authorization");
+        String token = null;
+        String username = null;
+        if (authHeader != null && authHeader.startsWith("Bearer ")) {
+            token = authHeader.substring(7);
+            username = jwtService.extractUsername(token);
+        }
+
+        if (username != null && SecurityContextHolder.getContext().getAuthentication() == null) {
+            UserDetails userDetails = userDetailsService.loadUserByUsername(username);
+            if (jwtService.validateToken(token, userDetails)) {
+                UsernamePasswordAuthenticationToken authToken = new UsernamePasswordAuthenticationToken(userDetails,
+                        null, userDetails.getAuthorities());
+                authToken.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
+                SecurityContextHolder.getContext().setAuthentication(authToken);
+            }
+        }
+        filterChain.doFilter(request, response);
+    }
+}
+```
+
+In the above code, we get the token as part of request. So, we now have to validate the token. To validate the token, we need some piece of code in `JwtTokenGeneratingService`.
+
+`Important` step is to set authToken to SecurityContextHolder.
+
+```java
+public String extractUsername(String token) {
+        return extractClaim(token, Claims::getSubject);
+    }
+
+    public Date extractExpiration(String token) {
+        return extractClaim(token, Claims::getExpiration);
+    }
+
+    public <T> T extractClaim(String token, Function<Claims, T> claimsResolver) {
+        final Claims claims = extractAllClaims(token);
+        return claimsResolver.apply(claims);
+    }
+
+    private Claims extractAllClaims(String token) {
+        return Jwts
+                .parserBuilder()
+                .setSigningKey(getSignKey())
+                .build()
+                .parseClaimsJws(token)
+                .getBody();
+    }
+
+    private Boolean isTokenExpired(String token) {
+        return extractExpiration(token).before(new Date());
+    }
+
+    public Boolean validateToken(String token, UserDetails userDetails) {
+        final String username = extractUsername(token);
+        return (username.equals(userDetails.getUsername()) && !isTokenExpired(token));
+    }
+```
+
+We completely imlemented JwtAuthFilter, and we should tell the spring Security to use this instead of its default auth.
+
+So let's go ahead and append this additionally to the SecurityFilterChain in `SecurityConfig` class.
+
+```java
+.sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+        .authenticationProvider(authenticationProvider())
+        .addFilterBefore(authFilter, UsernamePasswordAuthenticationFilter.class)
+        .httpBasic(Customizer.withDefaults())
+        .build();
+```
